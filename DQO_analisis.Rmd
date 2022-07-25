@@ -66,6 +66,7 @@ En los gráficos se visualiza que las líneas de crecimiento para ambos niveles 
 # Verificación de hipotesis
 # 1. correlacion
 $H0: \rho=0 \\ H1: \rho \neq 0$
+
 Primero se descarta que haya correlacion entre las pendientes y los interceptos
 ```{r}
 library(lme4)
@@ -80,6 +81,7 @@ La probabilidad asociada al comparar los dos modelos es alta (mayor a 0.05) por 
 
 # 2.Pendientes
 $H0: \sigma^2_1 = 0 \\ H1: \sigma^1_1 \neq 0$
+
 Luego se descarta que que las pendientes sean diferentes entre objetos de un mismo nivel de concentracion. En este paso se crea un modelo que no contenga las pendientes aleatorias (mod 3) y se compara con el modelo que si tenia estas pendientes (mod2).
 
 ```{r}
@@ -89,7 +91,9 @@ anova(mod3,mod2)
 
 Con una probabilidad alta de 0.88 se elcoge el modelo mas simple, es decir que se descarta que hayan pendientes especificas para cada objeto.
 
-#3. Interaccion
+# 3. Interaccion
+$H0: \gamma_j = 0 \quad \forall j \\ H1: \gamma_j \neq 0$
+
 Ahora se prueba si la interaccion entre el momento y el nivel de concentracion es significativa. Para eso se construye un modelo similar a el modelo 3, pero se elimina la interaccion entre edad y sexo (mod4)
 
 ```{r}
