@@ -1,0 +1,108 @@
+---
+title: "DQO"
+author: "Jose Pablo Gómez Mata"
+date: "7/25/2022"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+base <- read.csv("datos.csv")
+base <- base[,-c(9:11)]
+base <- base[-c(31:38),]
+base$objeto <- factor(base$objeto)
+base$semana <- factor(base$semana)
+base$momento <- as.numeric(base$momento)
+base$niv_concentracion <- factor(base$niv_concentracion)
+str(base)
+```
+
+# grafico
+Se creó un grafico donde se pueda observar el crecimiento de la absorvacia en funcion del tiempo. En este caso es importante resaltar que se utilizaron "momentos" en el tiempo ya que no se tenia la fecha exacta u hora cuando se hizo la medicion, por lo que se tomo de la siguiente manera: semana 1(momento 1 y 2), semana 2(momento 3 y 4) y semana 3(momento 5 y 6).
+
+```{r}
+library(lattice)
+
+beta0=beta1=c()
+length(table(base$objeto))
+
+
+obj = as.numeric(base$objeto)
+
+for(i in 1:length(table(base$objeto))){
+   mod=lm(absorbancia~momento,base[obj==i,])
+   beta0[i]=mod$coef[1]
+   beta1[i]=mod$coef[2]
+}
+
+# se crea el grafico
+xyplot(absorbancia~momento,group=objeto,pch=18,
+xlab="momento a partir de la 1 semana",
+ylab="Absorbancia promedio",type="r",data = base)
+
+plot(beta0,beta1,pch=18, col=4)
+cor(beta0,beta1)
+```
+
+En general se observa que las pendientes no van decreciendo conforme aumenta el intercepto. La correlacion es 0.39 la cual es media. No parece haber una relación fuerte entre la absorbancia en el momento 1 y la pendiente de cada objeto.
+
+# graficos para el nivel de concentración
+
+```{r}
+xyplot(absorbancia~momento|niv_concentracion,group=objeto,pch=18,
+xlab="momento a partir de la 1 semana",
+ylab="Absorbancia promedio",type=c("r"), data = base)
+
+xyplot(absorbancia~momento,group=niv_concentracion,col=c(2,4),
+xlab="momento a partir de la 1 semana",
+ylab="Absorbancia promedio",type="r",
+key=list(corner=c(0,1),lines=list(col=c(4,2),lty=1),
+text=list(c("nivel 1","nivel 2"))), data = base)
+```
+
+En los gráficos se visualiza que las líneas de crecimiento para ambos niveles muestran pendientes muy parecidas dentro de cada grupo. Ademas, haciendo la linea de tendencia para los niveles de concentracion (1 y 2) se nota un crecimiento mas alto para el segundo nivel de concentración, se puede apreciar como independientemente del momento de la medicion, la absorvacia promedio para el segundo nivel de concentracion es siempre mayor que el primer nivel de concentración.
+
+# Verificación de hipotesis
+# 1. correlacion
+$H0: \rho=0 \\ H1: \rho \neq 0$
+Primero se descarta que haya correlacion entre las pendientes y los interceptos
+```{r}
+library(lme4)
+options(contrasts=c("contr.sum","contr.poly")) # esto es para hacerlo suma nula
+mod1=lmer(absorbancia~momento*niv_concentracion+(1+momento|objeto),REML=F, data = base)
+mod2=lmer(absorbancia~momento*niv_concentracion+(1|objeto)+(0+momento|objeto),REML=F, data = base)
+anova(mod1,mod2)
+
+```
+
+La probabilidad asociada al comparar los dos modelos es alta (mayor a 0.05) por lo que no se rechaza  la hipotesis que no hay correlacion entre pendientes e interceptos (osea que son independientes). El modelo 2 es el elegido para continuar el analisis.
+
+# 2.Pendientes
+$H0: \sigma^2_1 = 0 \\ H1: \sigma^1_1 \neq 0$
+Luego se descarta que que las pendientes sean diferentes entre objetos de un mismo nivel de concentracion. En este paso se crea un modelo que no contenga las pendientes aleatorias (mod 3) y se compara con el modelo que si tenia estas pendientes (mod2).
+
+```{r}
+mod3 = lmer(absorbancia~momento*niv_concentracion+(1|objeto), REML = F, data = base)
+anova(mod3,mod2)
+```
+
+Con una probabilidad alta de 0.88 se elcoge el modelo mas simple, es decir que se descarta que hayan pendientes especificas para cada objeto.
+
+#3. Interaccion
+Ahora se prueba si la interaccion entre el momento y el nivel de concentracion es significativa. Para eso se construye un modelo similar a el modelo 3, pero se elimina la interaccion entre edad y sexo (mod4)
+
+```{r}
+mod4 = lmer(absorbancia~momento+niv_concentracion+(1|objeto), REML = F, data = base)
+anova(mod4,mod3)
+```
+
+Al obtener una probabilidad alta (0.30), no se rechaza la hipotesis de no interaccion. Es decir que la interaccion no es significativa, es decir que el incremento de la absorbancia en los distintos momentos es la misma para ambos niveles de concentracion. En este caso me quedo con el modelo 4.
+
+```{r}
+summary(mod4)$coef
+```
+
+
+
+
